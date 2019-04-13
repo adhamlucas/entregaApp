@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "226141036230",
+    "firebase_url": "https://entregaapp-1555160659961.firebaseio.com",
+    "project_id": "entregaapp-1555160659961",
+    "storage_bucket": "entregaapp-1555160659961.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:226141036230:android:37496ffbea266998",
+        "android_client_info": {
+          "package_name": "com.example.entregaapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "226141036230-cfm2d3arn2e34b32g6rr1rfrl262hc64.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDyD6PUq4nE410Z8tGS9nFcEhiNC7_wt_g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "226141036230-cfm2d3arn2e34b32g6rr1rfrl262hc64.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
