@@ -1,10 +1,13 @@
 package com.example.entregaapp
 
 import android.content.pm.PackageManager
+import android.location.Address
+import android.location.Geocoder
 import android.location.Location
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.support.v4.app.ActivityCompat
+import android.util.Log
 
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
@@ -15,6 +18,7 @@ import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.model.Marker
+import java.io.IOException
 
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
@@ -53,6 +57,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         mMap.uiSettings.isZoomControlsEnabled = true
         mMap.setOnMarkerClickListener (this)
 
+        placeMarkerOnMap(LatLng(-3.092233, -60.0469667))
+
         setUpMap()
 
         mMap.isMyLocationEnabled = true
@@ -65,13 +71,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
             }
 
         }
-//// Got last known location. In some rare situations this can be null.
-//            // 3
-//            if (location != null) {
-//                lastLocation = location
-//                val currentLatLng = LatLng(location.latitude, location.longitude)
-//                map.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 12f))
-//            }
 
     }
 
@@ -102,10 +101,44 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         }
     }
 
-    private fun placeMarkerOnMap(location: LatLng) {
-        val markerOptions = MarkerOptions().position(location).title("Ruben House")
-        mMap.addMarker(markerOptions)
 
+
+    private fun placeMarkerOnMap(location: LatLng) {
+        val markerOptions = MarkerOptions().position(location).title(getEndereco(location))
+
+//        val titleStr = getEndereco(location)
+//        markerOptions.title(titleStr)
+
+        mMap.addMarker(markerOptions)
+    }
+
+    private fun getEndereco(latLng: LatLng): String {
+        // 1
+        val geocoder = Geocoder(this)
+        var enderecos: List<Address>? = null
+        val endereco: Address?
+        var textoEndereco = ""
+
+        try {
+            // 2
+            enderecos = geocoder.getFromLocation(latLng.latitude, latLng.longitude, 1)
+            // 3
+        } catch (e: IOException) {
+            Log.e("MapsActivity", e.localizedMessage)
+        }
+
+        if (null != enderecos) {
+
+            endereco = enderecos[0]
+            textoEndereco = endereco.getAddressLine(0)
+
+//                for (i in 0 until endereco.maxAddressLineIndex) {
+//                    Log.d("Excecao", endereco.getAddressLine(i))
+//                    textoEndereco += if (i == 0) endereco.getAddressLine(i) else "\n" + endereco.getAddressLine(i)
+//                }
+        }
+
+        return textoEndereco
     }
 
 
