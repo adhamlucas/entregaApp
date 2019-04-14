@@ -1,5 +1,8 @@
 package com.example.entregaapp
 
+import android.app.Activity
+import android.content.Intent
+import android.content.IntentSender
 import android.content.pm.PackageManager
 import android.location.Address
 import android.location.Geocoder
@@ -8,6 +11,8 @@ import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.support.v4.app.ActivityCompat
 import android.util.Log
+import com.google.android.gms.common.api.ResolvableApiException
+import com.google.android.gms.location.*
 
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
@@ -15,8 +20,6 @@ import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
-import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.model.Marker
 import java.io.IOException
 
@@ -25,8 +28,17 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
     GoogleMap.OnMarkerClickListener {
 
     private lateinit var mMap: GoogleMap
-    private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private var fusedLocationClient: FusedLocationProviderClient? = null
     private lateinit var lastLocation: Location
+    private lateinit var locationCallback: LocationCallback
+    private lateinit var locationRequest: LocationRequest
+    private var locationUpdateState = false
+
+    companion object {
+        private const val LOCATION_PERMISSION_REQUEST_CODE = 1
+        private const val REQUEST_CHECK_SETTINGS = 2
+    }
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -36,7 +48,18 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
             .findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
 
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+        this.fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+
+        locationCallback = object : LocationCallback() {
+            override fun onLocationResult(p0: LocationResult) {
+                super.onLocationResult(p0)
+
+                lastLocation = p0.lastLocation
+                placeMarkerOnMap(LatLng(lastLocation.latitude, lastLocation.longitude))
+            }
+        }
+
+        createLocationRequest()
     }
 
     override fun onMarkerClick(p0: Marker?) = false
@@ -63,7 +86,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
 
         mMap.isMyLocationEnabled = true
 
-        fusedLocationClient.lastLocation.addOnSuccessListener( this ) {location ->
+        fusedLocationClient?.lastLocation?.addOnSuccessListener( this ) { location ->
             if(location != null) {
                 lastLocation = location
                 val currentLatLng = LatLng(location.latitude, location.longitude)
@@ -74,9 +97,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
 
     }
 
-    companion object {
-        private const val LOCATION_PERMISSION_REQUEST_CODE = 1
-    }
 
     private fun setUpMap (){
         if(ActivityCompat.checkSelfPermission(this,
@@ -91,7 +111,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
 
         mMap.isMyLocationEnabled = true
 
-        fusedLocationClient.lastLocation.addOnSuccessListener (this) { location ->
+        fusedLocationClient?.lastLocation!!.addOnSuccessListener (this) { location ->
             if(location!= null) {
                 lastLocation = location
                 val currentLatLng = LatLng(location.latitude, location.longitude)
@@ -120,9 +140,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         var textoEndereco = ""
 
         try {
-            // 2
-            enderecos = geocoder.getFromLocation(latLng.latitude, latLng.longitude, 1)
-            // 3
+           enderecos = geocoder.getFromLocation(latLng.latitude, latLng.longitude, 1)
         } catch (e: IOException) {
             Log.e("MapsActivity", e.localizedMessage)
         }
@@ -131,14 +149,85 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
 
             endereco = enderecos[0]
             textoEndereco = endereco.getAddressLine(0)
-
-//                for (i in 0 until endereco.maxAddressLineIndex) {
-//                    Log.d("Excecao", endereco.getAddressLine(i))
-//                    textoEndereco += if (i == 0) endereco.getAddressLine(i) else "\n" + endereco.getAddressLine(i)
-//                }
         }
-
         return textoEndereco
+    }
+
+//    Adiconar localizao atual do usaurio em tempo real
+    private fun startLocationUpdates() {
+        //1
+        if (ActivityCompat.checkSelfPermission(this,
+                android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION),
+                LOCATION_PERMISSION_REQUEST_CODE)
+            return
+        }
+        //2
+    fusedLocationClient?.requestLocationUpdates(locationRequest, locationCallback, null /* Looper */)
+    }
+
+    private fun createLocationRequest() {
+        // 1
+        locationRequest = LocationRequest()
+        // 2
+        locationRequest.interval = 10000
+        // 3
+        locationRequest.fastestInterval = 5000
+        locationRequest.priority = LocationRequest.PRIORITY_HIGH_ACCURACY
+
+        val builder = LocationSettingsRequest.Builder()
+            .addLocationRequest(locationRequest)
+
+        // 4
+        val client = LocationServices.getSettingsClient(this)
+        val task = client.checkLocationSettings(builder.build())
+
+        // 5
+        task.addOnSuccessListener {
+            locationUpdateState = true
+            startLocationUpdates()
+        }
+        task.addOnFailureListener { e ->
+            // 6
+            if (e is ResolvableApiException) {
+                // Location settings are not satisfied, but this can be fixed
+                // by showing the user a dialog.
+                try {
+                    // Show the dialog by calling startResolutionForResult(),
+                    // and check the result in onActivityResult().
+                    e.startResolutionForResult(this@MapsActivity,
+                        REQUEST_CHECK_SETTINGS)
+                } catch (sendEx: IntentSender.SendIntentException) {
+                    // Ignore the error.
+                }
+            }
+        }
+    }
+
+    // 1
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQUEST_CHECK_SETTINGS) {
+            if (resultCode == Activity.RESULT_OK) {
+                locationUpdateState = true
+                startLocationUpdates()
+            }
+        }
+    }
+
+    // 2
+    override fun onPause() {
+        super.onPause()
+        fusedLocationClient?.removeLocationUpdates(locationCallback)
+    }
+
+    // 3
+    public override fun onResume() {
+        super.onResume()
+        if (!locationUpdateState) {
+            startLocationUpdates()
+        }
     }
 
 
