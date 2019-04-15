@@ -1,10 +1,15 @@
-package com.example.entregaapp
+package com.examp
+
+import com.example.entregaapp.R
+
+le.entregaapp
 
 import android.app.Activity
 import android.content.Intent
 import android.content.IntentSender
 import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
+import android.graphics.Color
 import android.location.Address
 import android.location.Geocoder
 import android.location.Location
@@ -13,6 +18,10 @@ import android.os.Bundle
 import android.support.design.widget.FloatingActionButton
 import android.support.v4.app.ActivityCompat
 import android.util.Log
+import com.android.volley.Request
+import com.android.volley.Response
+import com.android.volley.toolbox.StringRequest
+import com.android.volley.toolbox.Volley
 import com.google.android.gms.common.GooglePlayServicesNotAvailableException
 import com.google.android.gms.common.GooglePlayServicesRepairableException
 import com.google.android.gms.common.api.ResolvableApiException
@@ -29,6 +38,8 @@ import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.*
+import com.google.maps.android.PolyUtil
+import org.json.JSONObject
 import java.io.IOException
 
 
@@ -41,6 +52,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
     private lateinit var locationCallback: LocationCallback
     private lateinit var locationRequest: LocationRequest
     private var locationUpdateState = false
+    private var lastSelectedMarker: Marker? = null
 
 
     companion object {
@@ -59,13 +71,13 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
 
         this.fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
-//        locationCallback = object : LocationCallback() {
-//            override fun onLocationResult(p0: LocationResult) {
-//                super.onLocationResult(p0)
-//
-//                lastLocation = p0.lastLocation
-//            }
-//        }
+        locationCallback = object : LocationCallback() {
+            override fun onLocationResult(p0: LocationResult) {
+                super.onLocationResult(p0)
+
+                lastLocation = p0.lastLocation
+            }
+        }
 
         createLocationRequest()
 
@@ -125,11 +137,17 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         mMap.setOnMarkerClickListener (this)
 
         setUpMap()
+
         createMarkeInMap()
+
     }
 
 
-    override fun onMarkerClick(p0: Marker?) = false
+    override fun onMarkerClick(marker: Marker?): Boolean {
+        marker!!.zIndex += 1.0f
+
+        lastSelectedMarker = marker
+    }
 
 
     private fun setUpMap (){
@@ -149,8 +167,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
             if(location!= null) {
                 lastLocation = location
                 val currentLatLng = LatLng(location.latitude, location.longitude)
-                placeMarkerOnMap(currentLatLng)
+//                placeMarkerOnMap(currentLatLng)
                 mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 12f))
+
             }
         }
     }
@@ -163,7 +182,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
 
         val titleStr = getEndereco(location)
         markerOptions.title(titleStr)
-        markerOptions.icon(BitmapDescriptorFactory.fromBitmap(BitmapFactory.decodeResource(resources, R.drawable.ic_local_shipping_black_24dp)))
+//        markerOptions.icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_local_shipping_black_24dp))
 
         mMap.addMarker(markerOptions)
     }
@@ -257,6 +276,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         }
     }
 
+    //adicionar marcadores escolhidos no mapa
     private fun createMarkeInMap () {
         val oceanLatLng = LatLng(-3.092573, -60.018508) // Coordenadas do Ocean
         val tceLatLng = LatLng (-3.0875468, -60.005322) //Coordenadas do TCE AM
@@ -264,4 +284,29 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         placeMarkerOnMap(oceanLatLng)
         placeMarkerOnMap(tceLatLng)
     }
+
+//
+//    private fun addRoute (){
+//        val path: MutableList<List<LatLng>> = ArrayList()
+//        val urlDirections = "https://maps.googleapis.com/maps/api/directions/json?origin=10.3181466,123.9029382&destination=10.311795,123.915864&key=<AIzaSyAcFHzCk-d11uSeNONtR38UFDOth9jvffc>"
+//        val directionsRequest = object : StringRequest(Request.Method.GET, urlDirections, Response.Listener<String> {
+//                response ->
+//            val jsonResponse = JSONObject(response)
+//            // Get routes
+//            val routes = jsonResponse.getJSONArray("routes")
+//            val legs = routes.getJSONObject(0).getJSONArray("legs")
+//            val steps = legs.getJSONObject(0).getJSONArray("steps")
+//            for (i in 0 until steps.length()) {
+//                val points = steps.getJSONObject(i).getJSONObject("polyline").getString("points")
+//                path.add(PolyUtil.decode(points))
+//            }
+//            for (i in 0 until path.size) {
+//                this.mMap.addPolyline(PolylineOptions().addAll(path[i]).color(Color.RED))
+//            }
+//        }, Response.ErrorListener {
+//                _ ->
+//        }){}
+//        val requestQueue = Volley.newRequestQueue(this)
+//        requestQueue.add(directionsRequest)
+//    }
 }
