@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Intent
 import android.content.IntentSender
 import android.content.pm.PackageManager
+import android.graphics.BitmapFactory
 import android.location.Address
 import android.location.Geocoder
 import android.location.Location
@@ -27,9 +28,7 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
-import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.MarkerOptions
-import com.google.android.gms.maps.model.Marker
+import com.google.android.gms.maps.model.*
 import java.io.IOException
 
 
@@ -43,6 +42,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
     private lateinit var locationRequest: LocationRequest
     private var locationUpdateState = false
 
+
     companion object {
         private const val LOCATION_PERMISSION_REQUEST_CODE = 1
         private const val REQUEST_CHECK_SETTINGS = 2
@@ -53,21 +53,19 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_maps)
-        // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         val mapFragment = supportFragmentManager
             .findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
 
         this.fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
-        locationCallback = object : LocationCallback() {
-            override fun onLocationResult(p0: LocationResult) {
-                super.onLocationResult(p0)
-
-                lastLocation = p0.lastLocation
-//                placeMarkerOnMap(LatLng(lastLocation.latitude, lastLocation.longitude))
-            }
-        }
+//        locationCallback = object : LocationCallback() {
+//            override fun onLocationResult(p0: LocationResult) {
+//                super.onLocationResult(p0)
+//
+//                lastLocation = p0.lastLocation
+//            }
+//        }
 
         createLocationRequest()
 
@@ -127,6 +125,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         mMap.setOnMarkerClickListener (this)
 
         setUpMap()
+        createMarkeInMap()
     }
 
 
@@ -164,6 +163,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
 
         val titleStr = getEndereco(location)
         markerOptions.title(titleStr)
+        markerOptions.icon(BitmapDescriptorFactory.fromBitmap(BitmapFactory.decodeResource(resources, R.drawable.ic_local_shipping_black_24dp)))
 
         mMap.addMarker(markerOptions)
     }
@@ -202,7 +202,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
                 LOCATION_PERMISSION_REQUEST_CODE)
             return
         }
-        //2
+
         fusedLocationClient?.requestLocationUpdates(locationRequest, locationCallback, null /* Looper */)
     }
 
@@ -241,7 +241,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         }
     }
 
-    // 1
 
 
     private fun loadPlacePicker() {
@@ -256,5 +255,13 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
             e.printStackTrace()
             Log.e("PlacePicker", e.message)
         }
+    }
+
+    private fun createMarkeInMap () {
+        val oceanLatLng = LatLng(-3.092573, -60.018508) // Coordenadas do Ocean
+        val tceLatLng = LatLng (-3.0875468, -60.005322) //Coordenadas do TCE AM
+        Log.d("MapsActivity", tceLatLng.longitude.toString())
+        placeMarkerOnMap(oceanLatLng)
+        placeMarkerOnMap(tceLatLng)
     }
 }
