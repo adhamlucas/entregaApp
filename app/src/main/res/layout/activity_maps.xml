@@ -14,13 +14,4 @@
             android:name="com.google.android.gms.maps.SupportMapFragment"
             class="com.google.android.gms.maps.SupportMapFragment"/>
 
-    <android.support.design.widget.FloatingActionButton
-            android:id="@+id/fab"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="bottom|end"
-            android:layout_marginRight="8dp"
-            android:layout_marginBottom="112dp"
-            android:src="@android:drawable/ic_menu_search"/>
-
 </android.support.design.widget.CoordinatorLayout>

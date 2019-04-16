@@ -1,8 +1,8 @@
-package com.examp
+package com.example.entregaapp
 
-import com.example.entregaapp.R
+import android.annotation.SuppressLint
 
-le.entregaapp
+
 
 import android.app.Activity
 import android.content.Intent
@@ -18,10 +18,15 @@ import android.os.Bundle
 import android.support.design.widget.FloatingActionButton
 import android.support.v4.app.ActivityCompat
 import android.util.Log
+import android.webkit.WebStorage
 import com.android.volley.Request
 import com.android.volley.Response
 import com.android.volley.toolbox.StringRequest
 import com.android.volley.toolbox.Volley
+import com.beust.klaxon.Json
+import com.beust.klaxon.JsonArray
+import com.beust.klaxon.JsonObject
+import com.beust.klaxon.Parser
 import com.google.android.gms.common.GooglePlayServicesNotAvailableException
 import com.google.android.gms.common.GooglePlayServicesRepairableException
 import com.google.android.gms.common.api.ResolvableApiException
@@ -39,8 +44,11 @@ import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.*
 import com.google.maps.android.PolyUtil
+import org.jetbrains.anko.custom.async
+import org.jetbrains.anko.uiThread
 import org.json.JSONObject
 import java.io.IOException
+import java.net.URL
 
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
@@ -81,11 +89,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
 
         createLocationRequest()
 
-        //Barra de pesquisa
-        val fab = findViewById<FloatingActionButton>(R.id.fab)
-        fab.setOnClickListener {
-            loadPlacePicker()
-        }
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -130,6 +133,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
      * installed Google Play services and returned to the app.
      */
 
+
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
 
@@ -140,13 +144,24 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
 
         createMarkeInMap()
 
+
     }
 
 
     override fun onMarkerClick(marker: Marker?): Boolean {
         marker!!.zIndex += 1.0f
 
-        lastSelectedMarker = marker
+        this.lastSelectedMarker = marker
+
+        if (marker != null) {
+
+            val localMarcador = LatLng(marker.position.latitude, marker.position.longitude)
+
+            Log.d("MarkerClick2: ", lastSelectedMarker?.position.toString())
+        }
+
+
+        return false
     }
 
 
@@ -168,7 +183,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
                 lastLocation = location
                 val currentLatLng = LatLng(location.latitude, location.longitude)
 //                placeMarkerOnMap(currentLatLng)
-                mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 12f))
+                this.mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 12f))
 
             }
         }
@@ -187,6 +202,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         mMap.addMarker(markerOptions)
     }
 
+    //Pega o endereço a partir da Latitude e Longitude
     private fun getEndereco(latLng: LatLng): String {
         // 1
         val geocoder = Geocoder(this)
@@ -261,22 +277,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
     }
 
 
-
-    private fun loadPlacePicker() {
-        val builder = PlacePicker.IntentBuilder()
-//        startActivityForResult(builder.build(this), PLACE_PICKER_REQUEST)
-        try {
-            startActivityForResult(builder.build(this), PLACE_PICKER_REQUEST)
-        } catch (e: GooglePlayServicesRepairableException) {
-            e.printStackTrace()
-            Log.e("PlacePicker", e.message)
-        } catch (e: GooglePlayServicesNotAvailableException) {
-            e.printStackTrace()
-            Log.e("PlacePicker", e.message)
-        }
-    }
-
-    //adicionar marcadores escolhidos no mapa
+    //adicionar marcadores pre-escolhidos no mapa
     private fun createMarkeInMap () {
         val oceanLatLng = LatLng(-3.092573, -60.018508) // Coordenadas do Ocean
         val tceLatLng = LatLng (-3.0875468, -60.005322) //Coordenadas do TCE AM
@@ -285,28 +286,93 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         placeMarkerOnMap(tceLatLng)
     }
 
-//
-//    private fun addRoute (){
-//        val path: MutableList<List<LatLng>> = ArrayList()
-//        val urlDirections = "https://maps.googleapis.com/maps/api/directions/json?origin=10.3181466,123.9029382&destination=10.311795,123.915864&key=<AIzaSyAcFHzCk-d11uSeNONtR38UFDOth9jvffc>"
-//        val directionsRequest = object : StringRequest(Request.Method.GET, urlDirections, Response.Listener<String> {
-//                response ->
-//            val jsonResponse = JSONObject(response)
-//            // Get routes
-//            val routes = jsonResponse.getJSONArray("routes")
-//            val legs = routes.getJSONObject(0).getJSONArray("legs")
-//            val steps = legs.getJSONObject(0).getJSONArray("steps")
-//            for (i in 0 until steps.length()) {
-//                val points = steps.getJSONObject(i).getJSONObject("polyline").getString("points")
-//                path.add(PolyUtil.decode(points))
-//            }
-//            for (i in 0 until path.size) {
-//                this.mMap.addPolyline(PolylineOptions().addAll(path[i]).color(Color.RED))
-//            }
-//        }, Response.ErrorListener {
-//                _ ->
-//        }){}
-//        val requestQueue = Volley.newRequestQueue(this)
-//        requestQueue.add(directionsRequest)
-//    }
+    //função para pegar rotas, por error, ão foi possível termina-la
+    private fun desenhandoRotas() {
+        val LatLongB = LatLngBounds.Builder()
+        val oceanLatLng = LatLng(-3.092573, -60.018508) // Coordenadas do Ocean
+        val tceLatLng = LatLng (-3.0875468, -60.005322) //Coordenadas do TCE AM
+        val options = PolylineOptions()
+        options.color(Color.RED)
+        options.width(5f)
+
+        val url = getURL(oceanLatLng, tceLatLng)
+
+        async {
+            val result = URL(url).readText()
+            Log.e("ERROR", result)
+            uiThread{
+                //quando API chaamda é feita, cria um parser e convert para Json Object
+
+                val parser: Parser = Parser()
+                val stringBuilder: StringBuilder = StringBuilder(result)
+                val json: JsonObject = parser.parse(stringBuilder) as JsonObject
+                //obter o elemento correto no JsonObject
+                val routes = json.array<JsonObject>("routes")
+                val points = routes!!["legs"]["steps"][0] as JsonArray<JsonObject>
+
+                val polypts = points.flatMap { decodePoly(it.obj("polyline")?.string("points")!!) }
+
+                options.add(oceanLatLng)
+                LatLongB.include(oceanLatLng)
+                for (point in polypts) {
+                    options.add(point)
+                    LatLongB.include(point)
+                }
+                options.add(tceLatLng)
+                LatLongB.include(tceLatLng)
+                //build bonds
+                val bounds = LatLongB.build()
+
+                mMap!!.addPolyline(options)
+
+                mMap!!.moveCamera(CameraUpdateFactory.newLatLngBounds(bounds, 100))
+            }
+        }
+    }
+
+    private fun getURL(de: LatLng, para: LatLng) : String {
+        val origem = "origin=" + de.latitude + "," + de.longitude
+        val destino = "destination=" + para.latitude + "," + para.longitude
+        val sensor = "sensor=false"
+        val params = "$origem&$destino&$sensor"
+
+        return "https://maps.googleapis.com/maps/api/directions/json?$params"
+    }
+
+    private fun decodePoly(encoded: String): List<LatLng> {
+        val poly = ArrayList<LatLng>()
+        var index = 0
+        val len = encoded.length
+        var lat = 0
+        var lng = 0
+
+        while (index < len) {
+            var b: Int
+            var shift = 0
+            var result = 0
+            do {
+                b = encoded[index++].toInt() - 63
+                result = result or (b and 0x1f shl shift)
+                shift += 5
+            } while (b >= 0x20)
+            val dlat = if (result and 1 != 0) (result shr 1).inv() else result shr 1
+            lat += dlat
+
+            shift = 0
+            result = 0
+            do {
+                b = encoded[index++].toInt() - 63
+                result = result or (b and 0x1f shl shift)
+                shift += 5
+            } while (b >= 0x20)
+            val dlng = if (result and 1 != 0) (result shr 1).inv() else result shr 1
+            lng += dlng
+
+            val p = LatLng(lat.toDouble() / 1E5,
+                lng.toDouble() / 1E5)
+            poly.add(p)
+        }
+
+        return poly
+    }
 }
